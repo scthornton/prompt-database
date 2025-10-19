@@ -1,0 +1,89 @@
+# Database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Research data (comment out if you want to commit datasets)
+prompt_injection_datasets/
+extracted_prompts/
+raw_data/
+datasets/
+
+# API keys and secrets
+.env
+.env.local
+*.key
+*.pem
+credentials.json
+config.local.*
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Model files (often too large for git)
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+models/
+
+# Large JSON files (optional - uncomment if too large)
+# extracted_prompts.json
