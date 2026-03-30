@@ -1,0 +1,77 @@
+name: Validate Prompt Submissions
+
+on:
+  pull_request:
+    paths:
+      - "submissions/**"
+      - "*.jsonl"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install prompt-database
+        run: pip install -e .
+
+      - name: Build reference database
+        run: prompt-db build --data-dir . --output /tmp/reference.db --force
+
+      - name: Find submission files
+        id: find-files
+        run: |
+          # Find new/changed JSONL or text files in submissions/ or root
+          FILES=$(git diff --name-only --diff-filter=ACM origin/main... -- 'submissions/*.jsonl' 'submissions/*.txt' '*.jsonl' | head -20)
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+          if [ -z "$FILES" ]; then
+            echo "No submission files found"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "Found files: $FILES"
+          fi
+
+      - name: Validate submissions
+        if: steps.find-files.outputs.found == 'true'
+        run: |
+          EXIT=0
+          for file in ${{ steps.find-files.outputs.files }}; do
+            echo "=== Validating: $file ==="
+            prompt-db --db /tmp/reference.db validate "$file" --check-dupes || EXIT=1
+          done
+          exit $EXIT
+
+      - name: Post validation summary
+        if: always() && steps.find-files.outputs.found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `### Prompt Submission Validation
+
+            The submission validation workflow ran on this PR.
+            Check the [Actions log](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+            **What's checked:**
+            - Minimum content length (10+ chars)
+            - Attack pattern detection (60+ regex patterns)
+            - Quality scoring (must score 15+/100)
+            - Duplicate detection against existing database
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

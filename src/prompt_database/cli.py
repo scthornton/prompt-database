@@ -876,5 +876,52 @@ def import_prompts(
         console.print(f"  [red]Errors:  {errors}[/red]")
 
 
+# =============================================================================
+# validate - validate prompt submissions
+# =============================================================================
+
+
+@main.command()
+@click.argument("input_file", type=click.Path(exists=True))
+@click.option("--check-dupes", is_flag=True, help="Check for duplicates against the database")
+@click.pass_context
+def validate(ctx: click.Context, input_file: str, check_dupes: bool) -> None:
+    """Validate a file of prompt submissions."""
+    from prompt_database.validate import validate_file
+
+    input_path = Path(input_file)
+    db_path = _resolve_db(ctx)
+
+    db = None
+    if check_dupes and db_path.exists():
+        db = PromptDatabase(db_path)
+        db.connect()
+
+    try:
+        report = validate_file(input_path, db=db)
+    finally:
+        if db:
+            db.close()
+
+    console.print("\n[bold]Submission Validation[/bold]")
+    console.print(f"  Total:      {report['total']}")
+    console.print(f"  [green]Valid:      {report['valid']}[/green]")
+    console.print(f"  [red]Invalid:    {report['invalid']}[/red]")
+    if check_dupes:
+        console.print(f"  [yellow]Duplicates: {report['duplicates']}[/yellow]")
+
+    for r in report["results"]:
+        if not r["valid"]:
+            console.print(f"\n  [red]Line {r['line']}:[/red] {r['content_preview']}...")
+            for issue in r["issues"]:
+                console.print(f"    [red]- {issue}[/red]")
+        if r["warnings"]:
+            for warn in r["warnings"]:
+                console.print(f"    [yellow]- {warn}[/yellow]")
+
+    if report["invalid"] > 0:
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     main()
