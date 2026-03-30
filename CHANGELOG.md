@@ -5,66 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-03-30
 
 ### Added
-- Production-ready prompt injection attack database for defensive security research
-- SQLite database schema with comprehensive attack tracking
-- Content-based deduplication using SHA256 hashing
-- RAG-independent design with optional RAG linkage
-- Automated attack generation using RAG + LLM integration
-- Multi-dimensional classification (attack vector, technique, CIA impact)
-- Research-grade tracking (paper IDs, CVEs, success rates, defenses)
-- Direct integration with ps-fuzz and AI-Agent Scanner testing tools
+- **Python package** (`prompt-database`) installable via `pip install -e .`
+- **`prompt-db` CLI** with commands: `build`, `stats`, `search`, `export`, `info`, `audit`, `curate`
+- **SQLite schema** with FTS5 full-text search, SHA256 content-hash deduplication, and schema versioning
+- **OWASP LLM Top 10 (2025)** category mapping with correct descriptions
+- **MITRE ATLAS** technique IDs on categories for threat model interoperability
+- **Quality scoring engine** with 60+ regex patterns for identifying real attacks vs. noise
+- **Data curation pipeline** — audit and remove non-attack content (removes ~67% noise)
+- **Ingestion pipeline** for `curated_advanced_prompts_v2.json` and `elite_custom_prompts.json`
+- **Test result tracking** with automatic success_rate aggregation
+- **19 passing tests** covering schema, CRUD, search, dedup, quality, and build
+- **Export** to JSON, JSONL, and CSV formats
 
-### Database Schema
-- **attacks** table: Main attack storage with UUID primary keys and content hashing
-- **testing_results** table: Empirical test data from security tools
-- **detection_signatures** table: Defense patterns and signature types
-- **attack_relationships** table: Evolution tracking and parent/child lineage
-- **defenses** table: Mitigation strategies and effectiveness scores
-- **rag_references** table: Optional content-based RAG linkage (rebuildable)
+### Changed
+- Database is now built from JSON sources via `prompt-db build` (no longer committed as binary)
+- Deduplication reduced 8,568 records to 3,983 unique prompts
+- Quality curation further reduces to ~1,300 high-signal attack prompts
 
-### Core Features
-- **Content Addressing**: SHA256 hashes for stable, path-independent identification
-- **RAG Independence**: Database works without RAG; RAG enhances but isn't required
-- **Flexible References**: RAG links can be rebuilt after reorganization
-- **Multi-Dimensional Queries**: Attack vector × technique × CIA impact
-- **Tool Integration**: ps-fuzz compatible, AI-Agent Scanner compatible
-- **Automated Generation**: RAG + LLM powered attack variant generation
+### Removed
+- Binary `prompts.db` from git tracking (build it yourself from JSON sources)
+- Phantom file references in README (db_manager.py, schema.sql, etc. that never existed)
 
-### Python Modules
-- `db_manager.py`: Core database manager class with CRUD operations
-- `ingest_curated_prompts.py`: Import existing prompt collections
-- `rag_prompt_generator.py`: RAG-powered attack generation
-- `rag_relinker.py`: Rebuild RAG links after reorganization
-- `schema.sql`: Complete database schema definition
-
-### Integration Capabilities
-- **ps-fuzz Integration**: Direct attack export for fuzzer testing
-- **AI-Agent Scanner Integration**: Compatible attack format
-- **RAG System Integration**: Pluggable RAG query functions
-- **LLM Integration**: Pluggable LLM generation functions
-
-### Research Features
-- Paper ID tracking for academic citations
-- CVE ID tracking for vulnerability references
-- Success rate metrics across tested models
-- Tested model tracking (GPT-4, Claude-3.5, Gemini-Pro, etc.)
-- Tag-based categorization and search
-
-### Workflow Support
-- Weekly testing cycle workflows
-- Paper-to-database pipeline
-- Continuous attack generation
-- Database gap filling automation
-- Export and backup functionality
-
-### Documentation
-- Comprehensive README with usage examples
-- Query examples and workflows
-- Integration guides for ps-fuzz and AI-Agent Scanner
-- RAG reorganization procedures
-- Database maintenance schedules
-
-[Unreleased]: https://github.com/scthornton/prompt-database/commits/main
+[0.1.0]: https://github.com/scthornton/prompt-database/releases/tag/v0.1.0
