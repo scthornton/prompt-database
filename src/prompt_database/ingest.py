@@ -112,8 +112,14 @@ def seed_categories(db: PromptDatabase) -> None:
             INSERT OR IGNORE INTO categories (name, code, description, severity, owasp_id, atlas_id)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (cat["name"], cat["code"], cat["description"], cat["severity"],
-             cat["owasp_id"], cat.get("atlas_id")),
+            (
+                cat["name"],
+                cat["code"],
+                cat["description"],
+                cat["severity"],
+                cat["owasp_id"],
+                cat.get("atlas_id"),
+            ),
         )
     db.conn.commit()
 
@@ -121,16 +127,33 @@ def seed_categories(db: PromptDatabase) -> None:
 def seed_tags(db: PromptDatabase) -> None:
     """Insert canonical tag set."""
     tags = [
-        "basic_override", "context_manipulation", "delimiter_tricks",
-        "encoding", "jailbreak", "meta_instruction", "multi_step",
-        "multi_turn", "obfuscation", "payload_splitting", "prompt_extraction",
-        "prompt_injection", "social_engineering", "technical_terms",
-        "data_exfiltration", "adversarial",
+        "basic_override",
+        "context_manipulation",
+        "delimiter_tricks",
+        "encoding",
+        "jailbreak",
+        "meta_instruction",
+        "multi_step",
+        "multi_turn",
+        "obfuscation",
+        "payload_splitting",
+        "prompt_extraction",
+        "prompt_injection",
+        "social_engineering",
+        "technical_terms",
+        "data_exfiltration",
+        "adversarial",
         # Advanced technique tags
-        "chain_of_thought_exploitation", "context_boundary_attacks",
-        "gradient_approximation", "indirect_extraction", "latent_space_attacks",
-        "meta_prompt_attacks", "model_specific_exploits", "multi_turn_gradual",
-        "optimization_based", "token_level_manipulation",
+        "chain_of_thought_exploitation",
+        "context_boundary_attacks",
+        "gradient_approximation",
+        "indirect_extraction",
+        "latent_space_attacks",
+        "meta_prompt_attacks",
+        "model_specific_exploits",
+        "multi_turn_gradual",
+        "optimization_based",
+        "token_level_manipulation",
         "universal_adversarial_prompts",
     ]
     for tag in tags:
@@ -161,9 +184,7 @@ def ingest_curated_json(db: PromptDatabase, json_path: Path) -> dict[str, int]:
     return counters
 
 
-def _ingest_one_curated(
-    db: PromptDatabase, entry: dict[str, Any], category_key: str
-) -> int | None:
+def _ingest_one_curated(db: PromptDatabase, entry: dict[str, Any], category_key: str) -> int | None:
     """Ingest a single prompt from the curated format."""
     content = entry.get("prompt", "").strip()
     if not content:
@@ -237,9 +258,14 @@ def ingest_elite_json(db: PromptDatabase, json_path: Path) -> dict[str, int]:
 def _pick_technique(attack_types: list[str], category_key: str) -> str:
     """Determine the best technique label from attack types."""
     priority = [
-        "prompt_injection", "jailbreak", "prompt_extraction",
-        "data_exfiltration", "multi_turn", "adversarial_attack",
-        "obfuscation", "payload_splitting",
+        "prompt_injection",
+        "jailbreak",
+        "prompt_extraction",
+        "data_exfiltration",
+        "multi_turn",
+        "adversarial_attack",
+        "obfuscation",
+        "payload_splitting",
     ]
     for p in priority:
         if p in attack_types:
@@ -281,13 +307,19 @@ def build_database(
             r = ingest_curated_json(db, curated)
             results["curated_advanced"] = r
             if verbose:
-                print(f"  curated_advanced: +{r['added']} added, {r['skipped']} skipped, {r['errors']} errors")
+                print(
+                    f"  curated_advanced: +{r['added']} added, "
+                    f"{r['skipped']} skipped, {r['errors']} errors"
+                )
 
         elite = data_dir / "elite_custom_prompts.json"
         if elite.exists():
             r = ingest_elite_json(db, elite)
             results["elite_custom"] = r
             if verbose:
-                print(f"  elite_custom: +{r['added']} added, {r['skipped']} skipped, {r['errors']} errors")
+                print(
+                    f"  elite_custom: +{r['added']} added, "
+                    f"{r['skipped']} skipped, {r['errors']} errors"
+                )
 
         return results

@@ -64,9 +64,7 @@ class PromptDatabase:
     def schema_version(self) -> int:
         """Return current schema version, or 0 if not initialized."""
         try:
-            row = self.conn.execute(
-                "SELECT MAX(version) FROM schema_version"
-            ).fetchone()
+            row = self.conn.execute("SELECT MAX(version) FROM schema_version").fetchone()
             return row[0] or 0
         except sqlite3.OperationalError:
             return 0
@@ -139,9 +137,7 @@ class PromptDatabase:
     def _apply_tags(self, prompt_id: int, tag_names: list[str]) -> None:
         for name in tag_names:
             self.conn.execute("INSERT OR IGNORE INTO tags (name) VALUES (?)", (name,))
-            tag_id = self.conn.execute(
-                "SELECT id FROM tags WHERE name = ?", (name,)
-            ).fetchone()[0]
+            tag_id = self.conn.execute("SELECT id FROM tags WHERE name = ?", (name,)).fetchone()[0]
             self.conn.execute(
                 "INSERT OR IGNORE INTO prompt_tags (prompt_id, tag_id) VALUES (?, ?)",
                 (prompt_id, tag_id),
@@ -149,12 +145,11 @@ class PromptDatabase:
 
     def _apply_categories(self, prompt_id: int, category_codes: list[str]) -> None:
         for code in category_codes:
-            row = self.conn.execute(
-                "SELECT id FROM categories WHERE code = ?", (code,)
-            ).fetchone()
+            row = self.conn.execute("SELECT id FROM categories WHERE code = ?", (code,)).fetchone()
             if row:
                 self.conn.execute(
-                    "INSERT OR IGNORE INTO prompt_categories (prompt_id, category_id) VALUES (?, ?)",
+                    "INSERT OR IGNORE INTO prompt_categories "
+                    "(prompt_id, category_id) VALUES (?, ?)",
                     (prompt_id, row[0]),
                 )
 
@@ -292,7 +287,9 @@ class PromptDatabase:
         if curated_only:
             conditions.append("p.is_curated = 1")
         if tag:
-            joins.append("JOIN prompt_tags pt ON pt.prompt_id = p.id JOIN tags t ON t.id = pt.tag_id")
+            joins.append(
+                "JOIN prompt_tags pt ON pt.prompt_id = p.id JOIN tags t ON t.id = pt.tag_id"
+            )
             conditions.append("t.name = ?")
             params.append(tag)
         if category_code:
@@ -327,13 +324,11 @@ class PromptDatabase:
         verified = self.conn.execute(
             "SELECT COUNT(*) FROM prompts WHERE is_verified = 1"
         ).fetchone()[0]
-        curated = self.conn.execute(
-            "SELECT COUNT(*) FROM prompts WHERE is_curated = 1"
-        ).fetchone()[0]
+        curated = self.conn.execute("SELECT COUNT(*) FROM prompts WHERE is_curated = 1").fetchone()[
+            0
+        ]
         test_count = self.conn.execute("SELECT COUNT(*) FROM test_results").fetchone()[0]
-        variation_count = self.conn.execute(
-            "SELECT COUNT(*) FROM prompt_variations"
-        ).fetchone()[0]
+        variation_count = self.conn.execute("SELECT COUNT(*) FROM prompt_variations").fetchone()[0]
 
         by_technique = dict(
             self.conn.execute(
@@ -486,7 +481,8 @@ class PromptDatabase:
         limit_clause = f"LIMIT {limit}" if limit else ""
 
         rows = self.conn.execute(
-            f"SELECT * FROM prompts WHERE {where} ORDER BY sophistication_score DESC {limit_clause}",
+            f"SELECT * FROM prompts WHERE {where} "
+            f"ORDER BY sophistication_score DESC {limit_clause}",
             params,
         ).fetchall()
 
@@ -496,7 +492,14 @@ class PromptDatabase:
             d["tags"] = self._get_prompt_tags(d["id"])
             d["categories"] = self._get_prompt_categories(d["id"])
             # Parse JSON fields
-            for field in ("matched_patterns", "target_models", "paper_ids", "cve_ids", "reference_urls"):
+            json_fields = (
+                "matched_patterns",
+                "target_models",
+                "paper_ids",
+                "cve_ids",
+                "reference_urls",
+            )
+            for field in json_fields:
                 if d.get(field) and isinstance(d[field], str):
                     try:
                         d[field] = json.loads(d[field])

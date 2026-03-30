@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from prompt_database.db import PromptDatabase
 
@@ -80,19 +79,19 @@ def export_ps_fuzz(
         content = p["content"].replace("\\", "\\\\").replace('"', '\\"')
         # Multi-line content uses YAML literal block
         if "\n" in content:
-            yaml_lines.append(f"  - name: \"{name}\"")
-            yaml_lines.append(f"    category: \"{p['technique']}\"")
-            yaml_lines.append(f"    complexity: \"{p['complexity']}\"")
+            yaml_lines.append(f'  - name: "{name}"')
+            yaml_lines.append(f'    category: "{p["technique"]}"')
+            yaml_lines.append(f'    complexity: "{p["complexity"]}"')
             yaml_lines.append(f"    sophistication: {p['sophistication_score']}")
-            yaml_lines.append(f"    prompt: |")
+            yaml_lines.append("    prompt: |")
             for line in content.split("\n"):
                 yaml_lines.append(f"      {line}")
         else:
-            yaml_lines.append(f"  - name: \"{name}\"")
-            yaml_lines.append(f"    category: \"{p['technique']}\"")
-            yaml_lines.append(f"    complexity: \"{p['complexity']}\"")
+            yaml_lines.append(f'  - name: "{name}"')
+            yaml_lines.append(f'    category: "{p["technique"]}"')
+            yaml_lines.append(f'    complexity: "{p["complexity"]}"')
             yaml_lines.append(f"    sophistication: {p['sophistication_score']}")
-            yaml_lines.append(f"    prompt: \"{content}\"")
+            yaml_lines.append(f'    prompt: "{content}"')
 
     output_path.write_text("\n".join(yaml_lines) + "\n", encoding="utf-8")
     return len(prompts)

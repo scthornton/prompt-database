@@ -11,8 +11,8 @@ from typing import Any
 
 # Sources known to contain primarily non-attack content
 NOISE_SOURCES = {
-    "ultrachat-200k",      # General chat dataset, not security-focused
-    "no-robots",           # General instruction-following, mostly benign
+    "ultrachat-200k",  # General chat dataset, not security-focused
+    "no-robots",  # General instruction-following, mostly benign
 }
 
 # Sources known to be high quality for attack research
@@ -33,7 +33,6 @@ ATTACK_INDICATORS = [
     r"forget\s+(all\s+)?previous",
     r"override\s+(your\s+)?instructions",
     r"new\s+instructions\s*[:=]",
-
     # System prompt extraction
     r"system\s+prompt",
     r"system\s+message",
@@ -42,7 +41,6 @@ ATTACK_INDICATORS = [
     r"what\s+are\s+your\s+instructions",
     r"show\s+me\s+your\s+prompt",
     r"repeat\s+(your\s+)?(instructions|prompt|rules)",
-
     # Jailbreak patterns
     r"(do|act)\s+anything\s+now",
     r"DAN\b",
@@ -55,14 +53,12 @@ ATTACK_INDICATORS = [
     r"developer\s+mode",
     r"god\s+mode",
     r"sudo\s+mode",
-
     # Role manipulation
     r"you\s+are\s+now\s+(?!going)",
     r"pretend\s+(you\s+are|to\s+be)",
     r"act\s+as\s+(if\s+you\s+are|a|an)",
     r"roleplay\s+as",
     r"simulate\s+(being|a|an)",
-
     # Data exfiltration
     r"training\s+data",
     r"confidential\s+(information|data)",
@@ -70,14 +66,12 @@ ATTACK_INDICATORS = [
     r"private\s+(information|data)",
     r"leak\s+(information|data)",
     r"exfiltrate",
-
     # Encoding/obfuscation
     r"base64\s+(encode|decode)",
     r"rot13",
     r"hex\s+encode",
     r"encode\s+(this|your|the)",
     r"obfuscate",
-
     # Context manipulation
     r"(begin|start)\s+(new\s+)?(session|conversation|context)",
     r"context\s+(switch|boundary|window)",
@@ -85,7 +79,6 @@ ATTACK_INDICATORS = [
     r"</?system>",
     r"\[INST\]",
     r"<<SYS>>",
-
     # Injection markers
     r"inject(ion)?",
     r"payload",
@@ -233,8 +226,11 @@ def _pick_primary_type(attack_types: list[str]) -> str:
     if not attack_types:
         return "uncategorized"
     priority = [
-        "prompt_injection", "jailbreak", "prompt_extraction",
-        "data_exfiltration", "multi_turn",
+        "prompt_injection",
+        "jailbreak",
+        "prompt_extraction",
+        "data_exfiltration",
+        "multi_turn",
     ]
     for p in priority:
         if p in attack_types:
