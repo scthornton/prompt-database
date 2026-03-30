@@ -277,5 +277,162 @@ def info(ctx: click.Context, prompt_id: int) -> None:
     console.print()
 
 
+# =============================================================================
+# audit - data quality audit
+# =============================================================================
+
+
+@main.command()
+@click.option("--source", "-s", help="Audit specific source only")
+@click.option("--show-remove", is_flag=True, help="Show prompts flagged for removal")
+@click.pass_context
+def audit(ctx: click.Context, source: str | None, show_remove: bool) -> None:
+    """Audit data quality and flag noise."""
+    from prompt_database.quality import compute_quality_score
+
+    db_path = _resolve_db(ctx)
+    if not db_path.exists():
+        console.print(f"[red]Database not found:[/red] {db_path}")
+        sys.exit(1)
+
+    with PromptDatabase(db_path) as db:
+        conditions = ["is_active = 1"]
+        params: list = []
+        if source:
+            conditions.append("source = ?")
+            params.append(source)
+
+        rows = db.conn.execute(
+            f"SELECT id, content, source, technique, sophistication_score, matched_patterns "
+            f"FROM prompts WHERE {' AND '.join(conditions)}",
+            params,
+        ).fetchall()
+
+    keep_count = 0
+    review_count = 0
+    remove_count = 0
+    by_source: dict[str, dict[str, int]] = {}
+
+    for row in rows:
+        patterns = []
+        if row["matched_patterns"]:
+            try:
+                patterns = json.loads(row["matched_patterns"])
+            except json.JSONDecodeError:
+                pass
+
+        assessment = compute_quality_score(
+            row["content"],
+            source=row["source"],
+            technique=row["technique"],
+            sophistication_score=row["sophistication_score"],
+            matched_patterns=patterns,
+        )
+
+        rec = assessment["recommendation"]
+        src = row["source"] or "unknown"
+
+        if src not in by_source:
+            by_source[src] = {"keep": 0, "review": 0, "remove": 0}
+        by_source[src][rec] += 1
+
+        if rec == "keep":
+            keep_count += 1
+        elif rec == "review":
+            review_count += 1
+        else:
+            remove_count += 1
+
+            if show_remove:
+                preview = row["content"][:100].replace("\n", " ")
+                console.print(f"  [red]REMOVE[/red] #{row['id']} [{src}] {preview}")
+
+    console.print(f"\n[bold]Data Quality Audit[/bold]")
+    console.print(f"  Total prompts: {len(rows):,}")
+    console.print(f"  [green]Keep:    {keep_count:,}[/green]")
+    console.print(f"  [yellow]Review:  {review_count:,}[/yellow]")
+    console.print(f"  [red]Remove:  {remove_count:,}[/red]")
+
+    console.print(f"\n[bold]By Source[/bold]")
+    table = Table(show_header=True)
+    table.add_column("Source", style="cyan")
+    table.add_column("Keep", justify="right", style="green")
+    table.add_column("Review", justify="right", style="yellow")
+    table.add_column("Remove", justify="right", style="red")
+    for src in sorted(by_source, key=lambda s: -(by_source[s]["keep"] + by_source[s]["review"] + by_source[s]["remove"])):
+        counts = by_source[src]
+        table.add_row(src, str(counts["keep"]), str(counts["review"]), str(counts["remove"]))
+    console.print(table)
+
+
+# =============================================================================
+# curate - remove noise and flag quality content
+# =============================================================================
+
+
+@main.command()
+@click.option("--dry-run", is_flag=True, help="Show what would be removed without changing DB")
+@click.option("--min-quality", default=25, type=int, help="Minimum quality score to keep (0-100)")
+@click.pass_context
+def curate(ctx: click.Context, dry_run: bool, min_quality: int) -> None:
+    """Remove noise prompts and flag high-quality content."""
+    from prompt_database.quality import compute_quality_score
+
+    db_path = _resolve_db(ctx)
+    if not db_path.exists():
+        console.print(f"[red]Database not found:[/red] {db_path}")
+        sys.exit(1)
+
+    with PromptDatabase(db_path) as db:
+        rows = db.conn.execute(
+            "SELECT id, content, source, technique, sophistication_score, matched_patterns "
+            "FROM prompts WHERE is_active = 1"
+        ).fetchall()
+
+        deactivated = 0
+        curated = 0
+
+        for row in rows:
+            patterns = []
+            if row["matched_patterns"]:
+                try:
+                    patterns = json.loads(row["matched_patterns"])
+                except json.JSONDecodeError:
+                    pass
+
+            assessment = compute_quality_score(
+                row["content"],
+                source=row["source"],
+                technique=row["technique"],
+                sophistication_score=row["sophistication_score"],
+                matched_patterns=patterns,
+            )
+
+            if assessment["quality_score"] < min_quality:
+                if not dry_run:
+                    db.conn.execute(
+                        "UPDATE prompts SET is_active = 0, updated_at = datetime('now') WHERE id = ?",
+                        (row["id"],),
+                    )
+                deactivated += 1
+            elif assessment["quality_score"] >= 50:
+                if not dry_run:
+                    db.conn.execute(
+                        "UPDATE prompts SET is_curated = 1, updated_at = datetime('now') WHERE id = ?",
+                        (row["id"],),
+                    )
+                curated += 1
+
+        if not dry_run:
+            db.conn.commit()
+
+        action = "Would deactivate" if dry_run else "Deactivated"
+        console.print(f"\n[bold]Curation Results[/bold]")
+        console.print(f"  Total prompts:  {len(rows):,}")
+        console.print(f"  [red]{action}: {deactivated:,} (quality < {min_quality})[/red]")
+        console.print(f"  [green]Curated:      {curated:,} (quality >= 50)[/green]")
+        console.print(f"  [dim]Remaining:    {len(rows) - deactivated:,}[/dim]")
+
+
 if __name__ == "__main__":
     main()
