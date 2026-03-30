@@ -389,6 +389,122 @@ def info(ctx: click.Context, prompt_id: int) -> None:
 
 
 # =============================================================================
+# test-prompt - run prompts against model APIs
+# =============================================================================
+
+
+@main.command("test-prompt")
+@click.option("--model", "-m", required=True, help="Target model (e.g., gpt-4, claude-sonnet-4-5)")
+@click.option("--api-base", default="https://api.openai.com/v1", help="API base URL")
+@click.option("--api-key", envvar="OPENAI_API_KEY", help="API key (or set OPENAI_API_KEY)")
+@click.option("--system-prompt", default="You are a helpful assistant.", help="System prompt for target")
+@click.option("--technique", "-t", help="Filter prompts by technique")
+@click.option("--min-score", type=int, help="Minimum sophistication score")
+@click.option("--limit", "-n", default=10, type=int, help="Number of prompts to test")
+@click.option("--prompt-id", type=int, help="Test a specific prompt by ID")
+@click.option("--dry-run", is_flag=True, help="Show what would be tested without calling API")
+@click.pass_context
+def test_prompt_cmd(
+    ctx: click.Context,
+    model: str,
+    api_base: str,
+    api_key: str | None,
+    system_prompt: str,
+    technique: str | None,
+    min_score: int | None,
+    limit: int,
+    prompt_id: int | None,
+    dry_run: bool,
+) -> None:
+    """Test prompts against a model API and record results."""
+    from prompt_database.tester import TestConfig, test_prompt
+
+    db_path = _resolve_db(ctx)
+    if not db_path.exists():
+        console.print(f"[red]Database not found:[/red] {db_path}")
+        sys.exit(1)
+
+    if not api_key and not dry_run:
+        console.print("[red]API key required. Set OPENAI_API_KEY or use --api-key[/red]")
+        sys.exit(1)
+
+    config = TestConfig(
+        target_model=model,
+        api_base=api_base,
+        api_key=api_key or "",
+        system_prompt=system_prompt,
+    )
+
+    with PromptDatabase(db_path) as db:
+        if prompt_id:
+            prompt = db.get_prompt(prompt_id)
+            if not prompt:
+                console.print(f"[red]Prompt #{prompt_id} not found.[/red]")
+                sys.exit(1)
+            prompts_to_test = [prompt]
+        else:
+            prompts_to_test = db.filter_prompts(
+                technique=technique,
+                min_sophistication=min_score,
+                limit=limit,
+            )
+
+        if not prompts_to_test:
+            console.print("[yellow]No prompts matched filters.[/yellow]")
+            return
+
+        console.print(f"\n[bold]Testing {len(prompts_to_test)} prompts against {model}[/bold]\n")
+
+        if dry_run:
+            for p in prompts_to_test:
+                preview = p["content"][:80].replace("\n", " ")
+                console.print(f"  #{p['id']} [{p['technique']}] {preview}...")
+            console.print(f"\n[dim]Dry run — no API calls made.[/dim]")
+            return
+
+        results_summary = {"SUCCESS": 0, "FAIL": 0, "PARTIAL": 0, "ERROR": 0}
+
+        for i, p in enumerate(prompts_to_test, 1):
+            console.print(f"  [{i}/{len(prompts_to_test)}] Testing #{p['id']}... ", end="")
+
+            result = test_prompt(config, p["id"], p["content"])
+
+            # Record to database
+            db.add_test_result(
+                p["id"],
+                target_model=model,
+                actual_prompt=p["content"],
+                result=result.result,
+                response=result.response,
+                confidence_score=result.confidence_score,
+                model_provider=config.model_provider,
+                tool_used="prompt-db",
+                response_time_ms=result.response_time_ms,
+                prompt_tokens=result.prompt_tokens,
+                completion_tokens=result.completion_tokens,
+                detected_refusal=result.detected_refusal,
+                guardrail_bypassed=result.guardrail_bypassed,
+            )
+
+            results_summary[result.result] += 1
+
+            color = {
+                "SUCCESS": "red", "FAIL": "green",
+                "PARTIAL": "yellow", "ERROR": "dim",
+            }.get(result.result, "white")
+            console.print(
+                f"[{color}]{result.result}[/{color}] "
+                f"(conf={result.confidence_score:.2f}, {result.response_time_ms:.0f}ms)"
+            )
+
+        console.print(f"\n[bold]Results Summary[/bold]")
+        console.print(f"  [red]SUCCESS (attack worked):[/red]  {results_summary['SUCCESS']}")
+        console.print(f"  [green]FAIL (model defended):[/green]   {results_summary['FAIL']}")
+        console.print(f"  [yellow]PARTIAL (ambiguous):[/yellow]     {results_summary['PARTIAL']}")
+        console.print(f"  [dim]ERROR (API error):[/dim]        {results_summary['ERROR']}")
+
+
+# =============================================================================
 # audit - data quality audit
 # =============================================================================
 
