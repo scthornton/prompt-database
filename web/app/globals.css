@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #09090b;
+  --fg: #fafafa;
+  --muted: #71717a;
+  --border: #27272a;
+  --accent: #dc2626;
+  --accent-muted: #991b1b;
+  --surface: #18181b;
+  --surface-hover: #27272a;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Geist Sans", system-ui, -apple-system, sans-serif;
+}
+
+code, pre, .mono {
+  font-family: "Geist Mono", ui-monospace, monospace;
+}
