@@ -523,3 +523,89 @@ class PromptDatabase:
         except Exception:
             self.conn.rollback()
             raise
+
+    # =========================================================================
+    # Random sampling
+    # =========================================================================
+
+    def random_prompts(
+        self,
+        count: int = 5,
+        *,
+        technique: str | None = None,
+        min_sophistication: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return random prompts from the database."""
+        conditions = ["is_active = 1"]
+        params: list[Any] = []
+
+        if technique:
+            conditions.append("technique = ?")
+            params.append(technique)
+        if min_sophistication is not None:
+            conditions.append("sophistication_score >= ?")
+            params.append(min_sophistication)
+
+        where = " AND ".join(conditions)
+        rows = self.conn.execute(
+            f"SELECT * FROM prompts WHERE {where} ORDER BY RANDOM() LIMIT ?",
+            params + [count],
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # =========================================================================
+    # Model comparison
+    # =========================================================================
+
+    def compare_models(self) -> list[dict[str, Any]]:
+        """Compare test results across different target models."""
+        rows = self.conn.execute(
+            """
+            SELECT
+                target_model,
+                COUNT(*) as total_tests,
+                SUM(CASE WHEN result = 'SUCCESS' THEN 1 ELSE 0 END) as successes,
+                SUM(CASE WHEN result = 'FAIL' THEN 1 ELSE 0 END) as failures,
+                SUM(CASE WHEN result = 'PARTIAL' THEN 1 ELSE 0 END) as partials,
+                ROUND(
+                    CAST(SUM(CASE WHEN result = 'SUCCESS' THEN 1 ELSE 0 END) AS REAL)
+                    / COUNT(*), 3
+                ) as attack_success_rate,
+                ROUND(AVG(confidence_score), 3) as avg_confidence,
+                ROUND(AVG(response_time_ms), 0) as avg_response_ms
+            FROM test_results
+            GROUP BY target_model
+            ORDER BY attack_success_rate DESC
+            """
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def compare_techniques(self, target_model: str | None = None) -> list[dict[str, Any]]:
+        """Compare attack success rates by technique."""
+        conditions = []
+        params: list[Any] = []
+        if target_model:
+            conditions.append("tr.target_model = ?")
+            params.append(target_model)
+
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+        rows = self.conn.execute(
+            f"""
+            SELECT
+                p.technique,
+                COUNT(*) as total_tests,
+                SUM(CASE WHEN tr.result = 'SUCCESS' THEN 1 ELSE 0 END) as successes,
+                ROUND(
+                    CAST(SUM(CASE WHEN tr.result = 'SUCCESS' THEN 1 ELSE 0 END) AS REAL)
+                    / COUNT(*), 3
+                ) as attack_success_rate
+            FROM test_results tr
+            JOIN prompts p ON p.id = tr.prompt_id
+            {where}
+            GROUP BY p.technique
+            ORDER BY attack_success_rate DESC
+            """,
+            params,
+        ).fetchall()
+        return [dict(r) for r in rows]

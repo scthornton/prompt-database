@@ -692,5 +692,189 @@ def curate(ctx: click.Context, dry_run: bool, min_quality: int) -> None:
         console.print(f"  [dim]Remaining:    {len(rows) - deactivated:,}[/dim]")
 
 
+# =============================================================================
+# random - get random prompts
+# =============================================================================
+
+
+@main.command()
+@click.option("--count", "-n", default=5, help="Number of random prompts")
+@click.option("--technique", "-t", help="Filter by technique")
+@click.option("--min-score", type=int, help="Minimum sophistication score")
+@click.option("--full", is_flag=True, help="Show full prompt content")
+@click.pass_context
+def random(
+    ctx: click.Context,
+    count: int,
+    technique: str | None,
+    min_score: int | None,
+    full: bool,
+) -> None:
+    """Get random prompts from the database."""
+    db_path = _resolve_db(ctx)
+    if not db_path.exists():
+        console.print(f"[red]Database not found:[/red] {db_path}")
+        sys.exit(1)
+
+    with PromptDatabase(db_path) as db:
+        results = db.random_prompts(count, technique=technique, min_sophistication=min_score)
+
+    if not results:
+        console.print("[yellow]No prompts found.[/yellow]")
+        return
+
+    console.print(f"\n[bold]{len(results)} random prompts[/bold]\n")
+    for r in results:
+        content = r["content"] if full else r["content"][:120].replace("\n", " ")
+        console.print(
+            f"  [cyan]#{r['id']}[/cyan] [{r['technique']}] "
+            f"[{r['complexity']}] score={r['sophistication_score']}"
+        )
+        console.print(f"    {content}")
+        if not full:
+            console.print(f"    [dim]source={r['source']}[/dim]")
+        console.print()
+
+
+# =============================================================================
+# compare - compare test results across models
+# =============================================================================
+
+
+@main.command()
+@click.option("--by", "group_by", type=click.Choice(["model", "technique"]), default="model")
+@click.option("--model", "-m", help="Filter by model (for technique comparison)")
+@click.pass_context
+def compare(ctx: click.Context, group_by: str, model: str | None) -> None:
+    """Compare attack success rates across models or techniques."""
+    db_path = _resolve_db(ctx)
+    if not db_path.exists():
+        console.print(f"[red]Database not found:[/red] {db_path}")
+        sys.exit(1)
+
+    with PromptDatabase(db_path) as db:
+        if group_by == "model":
+            rows = db.compare_models()
+        else:
+            rows = db.compare_techniques(target_model=model)
+
+    if not rows:
+        console.print("[yellow]No test results found. Run `prompt-db test-prompt` first.[/yellow]")
+        return
+
+    console.print(f"\n[bold]Attack Success by {group_by.title()}[/bold]\n")
+
+    table = Table(show_header=True)
+    if group_by == "model":
+        table.add_column("Model", style="cyan")
+        table.add_column("Tests", justify="right")
+        table.add_column("Success", justify="right", style="red")
+        table.add_column("Fail", justify="right", style="green")
+        table.add_column("Partial", justify="right", style="yellow")
+        table.add_column("Attack Rate", justify="right", style="bold red")
+        table.add_column("Avg Conf", justify="right")
+        table.add_column("Avg ms", justify="right", style="dim")
+        for r in rows:
+            table.add_row(
+                r["target_model"],
+                str(r["total_tests"]),
+                str(r["successes"]),
+                str(r["failures"]),
+                str(r["partials"]),
+                f"{r['attack_success_rate']:.1%}",
+                f"{r['avg_confidence']:.2f}" if r["avg_confidence"] else "-",
+                str(int(r["avg_response_ms"])) if r["avg_response_ms"] else "-",
+            )
+    else:
+        table.add_column("Technique", style="cyan")
+        table.add_column("Tests", justify="right")
+        table.add_column("Successes", justify="right", style="red")
+        table.add_column("Attack Rate", justify="right", style="bold red")
+        for r in rows:
+            table.add_row(
+                r["technique"],
+                str(r["total_tests"]),
+                str(r["successes"]),
+                f"{r['attack_success_rate']:.1%}",
+            )
+
+    console.print(table)
+
+
+# =============================================================================
+# import-prompts - import from external JSONL files
+# =============================================================================
+
+
+@main.command("import-prompts")
+@click.argument("input_file", type=click.Path(exists=True))
+@click.option("--source", "-s", default="imported", help="Source label for imported prompts")
+@click.option("--technique", "-t", default="uncategorized", help="Default technique")
+@click.pass_context
+def import_prompts(
+    ctx: click.Context,
+    input_file: str,
+    source: str,
+    technique: str,
+) -> None:
+    """Import prompts from a JSONL or text file.
+
+    JSONL: each line is {"content": "...", "technique": "...", ...}
+    Text: each line is treated as a separate prompt.
+    """
+    db_path = _resolve_db(ctx)
+    if not db_path.exists():
+        console.print(f"[red]Database not found:[/red] {db_path}")
+        sys.exit(1)
+
+    input_path = Path(input_file)
+    lines = input_path.read_text(encoding="utf-8").strip().split("\n")
+
+    added = 0
+    skipped = 0
+    errors = 0
+
+    with PromptDatabase(db_path) as db:
+        with db.bulk_insert():
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    # Try JSONL first
+                    data = json.loads(line)
+                    content = data.get("content") or data.get("prompt") or data.get("text", "")
+                    t = data.get("technique", technique)
+                    score = data.get("sophistication_score", 0)
+                    tags = data.get("tags", [])
+                except json.JSONDecodeError:
+                    # Treat as plain text
+                    content = line
+                    t = technique
+                    score = 0
+                    tags = []
+
+                if not content.strip():
+                    continue
+
+                pid = db.add_prompt(
+                    content,
+                    technique=t,
+                    source=source,
+                    sophistication_score=score,
+                    tags=tags if tags else None,
+                )
+                if pid:
+                    added += 1
+                else:
+                    skipped += 1
+
+    console.print("\n[bold]Import Results[/bold]")
+    console.print(f"  [green]Added:   {added}[/green]")
+    console.print(f"  [dim]Skipped: {skipped} (duplicates)[/dim]")
+    if errors:
+        console.print(f"  [red]Errors:  {errors}[/red]")
+
+
 if __name__ == "__main__":
     main()
