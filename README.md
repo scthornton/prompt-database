@@ -7,7 +7,7 @@
 
 A curated, searchable database of prompt injection attacks for defensive AI security research.
 
-Built by [Scott Thornton](https://github.com/scthornton) at [perfecXion.ai](https://perfecxion.ai).
+Built by [Scott Thornton](https://github.com/scthornton) 
 
 ## What is this?
 
