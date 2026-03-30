@@ -233,6 +233,117 @@ def export(
 
 
 # =============================================================================
+# export-garak - export for Garak security scanner
+# =============================================================================
+
+
+@main.command("export-garak")
+@click.option("--output", "-o", required=True, help="Output JSONL file")
+@click.option("--technique", "-t", help="Filter by technique")
+@click.option("--min-score", type=int, help="Minimum sophistication score")
+@click.option("--limit", "-n", type=int, help="Max prompts")
+@click.pass_context
+def export_garak_cmd(
+    ctx: click.Context,
+    output: str,
+    technique: str | None,
+    min_score: int | None,
+    limit: int | None,
+) -> None:
+    """Export prompts in Garak probe format (JSONL)."""
+    from prompt_database.exporters import export_garak
+
+    db_path = _resolve_db(ctx)
+    if not db_path.exists():
+        console.print(f"[red]Database not found:[/red] {db_path}")
+        sys.exit(1)
+
+    with PromptDatabase(db_path) as db:
+        count = export_garak(
+            db, Path(output),
+            technique=technique,
+            min_sophistication=min_score,
+            limit=limit,
+        )
+
+    console.print(f"[green]Exported {count} prompts to {output} (Garak format)[/green]")
+
+
+# =============================================================================
+# export-ps-fuzz - export for ps-fuzz security fuzzer
+# =============================================================================
+
+
+@main.command("export-ps-fuzz")
+@click.option("--output", "-o", required=True, help="Output YAML file")
+@click.option("--technique", "-t", help="Filter by technique")
+@click.option("--min-score", type=int, help="Minimum sophistication score")
+@click.option("--limit", "-n", type=int, help="Max prompts")
+@click.pass_context
+def export_ps_fuzz_cmd(
+    ctx: click.Context,
+    output: str,
+    technique: str | None,
+    min_score: int | None,
+    limit: int | None,
+) -> None:
+    """Export prompts in ps-fuzz YAML format."""
+    from prompt_database.exporters import export_ps_fuzz
+
+    db_path = _resolve_db(ctx)
+    if not db_path.exists():
+        console.print(f"[red]Database not found:[/red] {db_path}")
+        sys.exit(1)
+
+    with PromptDatabase(db_path) as db:
+        count = export_ps_fuzz(
+            db, Path(output),
+            technique=technique,
+            min_sophistication=min_score,
+            limit=limit,
+        )
+
+    console.print(f"[green]Exported {count} prompts to {output} (ps-fuzz format)[/green]")
+
+
+# =============================================================================
+# export-dataset - export as HuggingFace-compatible dataset
+# =============================================================================
+
+
+@main.command("export-dataset")
+@click.option("--output", "-o", required=True, help="Output JSONL file")
+@click.option("--technique", "-t", help="Filter by technique")
+@click.option("--min-score", type=int, help="Minimum sophistication score")
+@click.option("--limit", "-n", type=int, help="Max prompts")
+@click.pass_context
+def export_dataset_cmd(
+    ctx: click.Context,
+    output: str,
+    technique: str | None,
+    min_score: int | None,
+    limit: int | None,
+) -> None:
+    """Export as HuggingFace-compatible dataset (JSONL)."""
+    from prompt_database.exporters import export_dataset
+
+    db_path = _resolve_db(ctx)
+    if not db_path.exists():
+        console.print(f"[red]Database not found:[/red] {db_path}")
+        sys.exit(1)
+
+    with PromptDatabase(db_path) as db:
+        count = export_dataset(
+            db, Path(output),
+            technique=technique,
+            min_sophistication=min_score,
+            limit=limit,
+        )
+
+    console.print(f"[green]Exported {count} prompts to {output} (HuggingFace dataset format)[/green]")
+
+
+# =============================================================================
 # info - show details of a single prompt
 # =============================================================================
 
