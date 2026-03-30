@@ -16,9 +16,7 @@ class TestIsLikelyAttack:
         assert is_attack
 
     def test_benign_content_not_flagged(self):
-        is_attack, _ = is_likely_attack(
-            "What is the capital of France? Please explain in detail."
-        )
+        is_attack, _ = is_likely_attack("What is the capital of France? Please explain in detail.")
         assert not is_attack
 
     def test_academic_text_not_flagged(self):

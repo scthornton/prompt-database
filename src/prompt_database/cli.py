@@ -25,7 +25,9 @@ def _resolve_db(ctx: click.Context) -> Path:
 
 @click.group()
 @click.version_option(__version__, prog_name="prompt-db")
-@click.option("--db", default=str(DEFAULT_DB), envvar="PROMPT_DB_PATH", help="Path to SQLite database")
+@click.option(
+    "--db", default=str(DEFAULT_DB), envvar="PROMPT_DB_PATH", help="Path to SQLite database"
+)
 @click.pass_context
 def main(ctx: click.Context, db: str) -> None:
     """Prompt injection attack database for defensive AI security research."""
@@ -61,7 +63,9 @@ def build(ctx: click.Context, data_dir: str, output: str, force: bool) -> None:
 
     total_added = sum(r["added"] for r in results.values())
     total_skipped = sum(r["skipped"] for r in results.values())
-    console.print(f"\n[green]Done![/green] {total_added} prompts added, {total_skipped} duplicates skipped.")
+    console.print(
+        f"\n[green]Done![/green] {total_added} prompts added, {total_skipped} duplicates skipped."
+    )
     console.print(f"Database: {out_path} ({out_path.stat().st_size / 1024 / 1024:.1f} MB)")
 
 
@@ -82,7 +86,7 @@ def stats(ctx: click.Context) -> None:
     with PromptDatabase(db_path) as db:
         s = db.stats()
 
-    console.print(f"\n[bold]Prompt Database Statistics[/bold]")
+    console.print("\n[bold]Prompt Database Statistics[/bold]")
     console.print(f"  Total prompts:      {s['total_prompts']:,}")
     console.print(f"  Verified:           {s['verified']:,}")
     console.print(f"  Curated:            {s['curated']:,}")
@@ -90,7 +94,7 @@ def stats(ctx: click.Context) -> None:
     console.print(f"  Variations:         {s['variations']:,}")
     console.print(f"  Avg sophistication: {s['avg_sophistication']}")
 
-    console.print(f"\n[bold]By Technique[/bold]")
+    console.print("\n[bold]By Technique[/bold]")
     table = Table(show_header=True)
     table.add_column("Technique", style="cyan")
     table.add_column("Count", justify="right")
@@ -98,7 +102,7 @@ def stats(ctx: click.Context) -> None:
         table.add_row(tech, str(count))
     console.print(table)
 
-    console.print(f"\n[bold]By Complexity[/bold]")
+    console.print("\n[bold]By Complexity[/bold]")
     table = Table(show_header=True)
     table.add_column("Complexity", style="yellow")
     table.add_column("Count", justify="right")
@@ -106,7 +110,7 @@ def stats(ctx: click.Context) -> None:
         table.add_row(comp, str(count))
     console.print(table)
 
-    console.print(f"\n[bold]By Source[/bold]")
+    console.print("\n[bold]By Source[/bold]")
     table = Table(show_header=True)
     table.add_column("Source", style="green")
     table.add_column("Count", justify="right")
@@ -166,7 +170,10 @@ def search(
 
     for r in results:
         content_preview = r["content"][:120].replace("\n", " ") if not full else r["content"]
-        console.print(f"  [cyan]#{r['id']}[/cyan] [{r['technique']}] [{r['complexity']}] score={r['sophistication_score']}")
+        score = r["sophistication_score"]
+        console.print(
+            f"  [cyan]#{r['id']}[/cyan] [{r['technique']}] [{r['complexity']}] score={score}"
+        )
         console.print(f"    {content_preview}")
         if not full:
             console.print(f"    [dim]source={r['source']}[/dim]")
@@ -219,7 +226,16 @@ def export(
 
         buf = io.StringIO()
         if prompts:
-            writer = csv.DictWriter(buf, fieldnames=["id", "content", "technique", "complexity", "sophistication_score", "source", "success_rate"])
+            fields = [
+                "id",
+                "content",
+                "technique",
+                "complexity",
+                "sophistication_score",
+                "source",
+                "success_rate",
+            ]
+            writer = csv.DictWriter(buf, fieldnames=fields)
             writer.writeheader()
             for p in prompts:
                 writer.writerow({k: p.get(k) for k in writer.fieldnames})
@@ -260,7 +276,8 @@ def export_garak_cmd(
 
     with PromptDatabase(db_path) as db:
         count = export_garak(
-            db, Path(output),
+            db,
+            Path(output),
             technique=technique,
             min_sophistication=min_score,
             limit=limit,
@@ -297,7 +314,8 @@ def export_ps_fuzz_cmd(
 
     with PromptDatabase(db_path) as db:
         count = export_ps_fuzz(
-            db, Path(output),
+            db,
+            Path(output),
             technique=technique,
             min_sophistication=min_score,
             limit=limit,
@@ -334,13 +352,16 @@ def export_dataset_cmd(
 
     with PromptDatabase(db_path) as db:
         count = export_dataset(
-            db, Path(output),
+            db,
+            Path(output),
             technique=technique,
             min_sophistication=min_score,
             limit=limit,
         )
 
-    console.print(f"[green]Exported {count} prompts to {output} (HuggingFace dataset format)[/green]")
+    console.print(
+        f"[green]Exported {count} prompts to {output} (HuggingFace dataset format)[/green]"
+    )
 
 
 # =============================================================================
@@ -383,7 +404,7 @@ def info(ctx: click.Context, prompt_id: int) -> None:
         cats = [f"{c['code']} ({c['name']})" for c in prompt["categories"]]
         console.print(f"  Categories:    {', '.join(cats)}")
 
-    console.print(f"\n[bold]Content:[/bold]")
+    console.print("\n[bold]Content:[/bold]")
     console.print(prompt["content"])
     console.print()
 
@@ -397,7 +418,9 @@ def info(ctx: click.Context, prompt_id: int) -> None:
 @click.option("--model", "-m", required=True, help="Target model (e.g., gpt-4, claude-sonnet-4-5)")
 @click.option("--api-base", default="https://api.openai.com/v1", help="API base URL")
 @click.option("--api-key", envvar="OPENAI_API_KEY", help="API key (or set OPENAI_API_KEY)")
-@click.option("--system-prompt", default="You are a helpful assistant.", help="System prompt for target")
+@click.option(
+    "--system-prompt", default="You are a helpful assistant.", help="System prompt for target"
+)
 @click.option("--technique", "-t", help="Filter prompts by technique")
 @click.option("--min-score", type=int, help="Minimum sophistication score")
 @click.option("--limit", "-n", default=10, type=int, help="Number of prompts to test")
@@ -459,7 +482,7 @@ def test_prompt_cmd(
             for p in prompts_to_test:
                 preview = p["content"][:80].replace("\n", " ")
                 console.print(f"  #{p['id']} [{p['technique']}] {preview}...")
-            console.print(f"\n[dim]Dry run — no API calls made.[/dim]")
+            console.print("\n[dim]Dry run — no API calls made.[/dim]")
             return
 
         results_summary = {"SUCCESS": 0, "FAIL": 0, "PARTIAL": 0, "ERROR": 0}
@@ -489,15 +512,17 @@ def test_prompt_cmd(
             results_summary[result.result] += 1
 
             color = {
-                "SUCCESS": "red", "FAIL": "green",
-                "PARTIAL": "yellow", "ERROR": "dim",
+                "SUCCESS": "red",
+                "FAIL": "green",
+                "PARTIAL": "yellow",
+                "ERROR": "dim",
             }.get(result.result, "white")
             console.print(
                 f"[{color}]{result.result}[/{color}] "
                 f"(conf={result.confidence_score:.2f}, {result.response_time_ms:.0f}ms)"
             )
 
-        console.print(f"\n[bold]Results Summary[/bold]")
+        console.print("\n[bold]Results Summary[/bold]")
         console.print(f"  [red]SUCCESS (attack worked):[/red]  {results_summary['SUCCESS']}")
         console.print(f"  [green]FAIL (model defended):[/green]   {results_summary['FAIL']}")
         console.print(f"  [yellow]PARTIAL (ambiguous):[/yellow]     {results_summary['PARTIAL']}")
@@ -574,19 +599,23 @@ def audit(ctx: click.Context, source: str | None, show_remove: bool) -> None:
                 preview = row["content"][:100].replace("\n", " ")
                 console.print(f"  [red]REMOVE[/red] #{row['id']} [{src}] {preview}")
 
-    console.print(f"\n[bold]Data Quality Audit[/bold]")
+    console.print("\n[bold]Data Quality Audit[/bold]")
     console.print(f"  Total prompts: {len(rows):,}")
     console.print(f"  [green]Keep:    {keep_count:,}[/green]")
     console.print(f"  [yellow]Review:  {review_count:,}[/yellow]")
     console.print(f"  [red]Remove:  {remove_count:,}[/red]")
 
-    console.print(f"\n[bold]By Source[/bold]")
+    console.print("\n[bold]By Source[/bold]")
     table = Table(show_header=True)
     table.add_column("Source", style="cyan")
     table.add_column("Keep", justify="right", style="green")
     table.add_column("Review", justify="right", style="yellow")
     table.add_column("Remove", justify="right", style="red")
-    for src in sorted(by_source, key=lambda s: -(by_source[s]["keep"] + by_source[s]["review"] + by_source[s]["remove"])):
+
+    def _total(s: str) -> int:
+        return -(by_source[s]["keep"] + by_source[s]["review"] + by_source[s]["remove"])
+
+    for src in sorted(by_source, key=_total):
         counts = by_source[src]
         table.add_row(src, str(counts["keep"]), str(counts["review"]), str(counts["remove"]))
     console.print(table)
@@ -638,14 +667,16 @@ def curate(ctx: click.Context, dry_run: bool, min_quality: int) -> None:
             if assessment["quality_score"] < min_quality:
                 if not dry_run:
                     db.conn.execute(
-                        "UPDATE prompts SET is_active = 0, updated_at = datetime('now') WHERE id = ?",
+                        "UPDATE prompts SET is_active = 0, updated_at = datetime('now') "
+                        "WHERE id = ?",
                         (row["id"],),
                     )
                 deactivated += 1
             elif assessment["quality_score"] >= 50:
                 if not dry_run:
                     db.conn.execute(
-                        "UPDATE prompts SET is_curated = 1, updated_at = datetime('now') WHERE id = ?",
+                        "UPDATE prompts SET is_curated = 1, updated_at = datetime('now') "
+                        "WHERE id = ?",
                         (row["id"],),
                     )
                 curated += 1
@@ -654,7 +685,7 @@ def curate(ctx: click.Context, dry_run: bool, min_quality: int) -> None:
             db.conn.commit()
 
         action = "Would deactivate" if dry_run else "Deactivated"
-        console.print(f"\n[bold]Curation Results[/bold]")
+        console.print("\n[bold]Curation Results[/bold]")
         console.print(f"  Total prompts:  {len(rows):,}")
         console.print(f"  [red]{action}: {deactivated:,} (quality < {min_quality})[/red]")
         console.print(f"  [green]Curated:      {curated:,} (quality >= 50)[/green]")
