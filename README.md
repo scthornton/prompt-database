@@ -1,5 +1,10 @@
 # Prompt Injection Attack Database
 
+[![CI](https://github.com/scthornton/prompt-database/actions/workflows/ci.yml/badge.svg)](https://github.com/scthornton/prompt-database/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![OWASP LLM Top 10](https://img.shields.io/badge/OWASP-LLM%20Top%2010-red.svg)](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+
 A curated, searchable database of prompt injection attacks for defensive AI security research.
 
 Built by [Scott Thornton](https://github.com/scthornton) at [perfecXion.ai](https://perfecxion.ai).
@@ -157,19 +162,37 @@ prompt-database/
 
 ```bash
 # Install with dev dependencies
-pip install -e ".[dev]"
+make dev
 
 # Run tests
-pytest tests/ -v
+make test
 
-# Lint
+# Lint & format
+make lint
+make format
+
+# Build database, curate, and view stats
+make curate
+make stats
+
+# Clean generated files
+make clean
+```
+
+Or without make:
+```bash
+pip install -e ".[dev]"
+pytest tests/ -v
 ruff check src/ tests/
 ```
 
+See [`examples/basic_usage.py`](examples/basic_usage.py) for Python library usage.
+
 ## Roadmap
 
+- [x] ~~Export plugins for Garak, ps-fuzz~~ (done)
+- [x] ~~GitHub Actions CI/CD~~ (done)
 - [ ] Automated testing against model APIs (record real success rates)
-- [ ] Export plugins for Garak, ps-fuzz, AI-Agent Scanner
 - [ ] RAG-powered attack variant generation
 - [ ] Web UI for browsing and contributing
 - [ ] CI/CD quality gates on PR submissions
