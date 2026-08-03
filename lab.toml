@@ -5,6 +5,7 @@ surface = "mac"
 proves  = "Deduplicated prompt-injection attacks with full-text search, OWASP LLM Top-10 and MITRE ATLAS mapping, quality scoring, and a browser UI."
 
 [run]
+oneshot = true   # runs to completion and exits; nothing to tear down
 launch = "make stats"
 
 [requires]
