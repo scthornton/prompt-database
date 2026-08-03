@@ -1,0 +1,17 @@
+id      = "prompt-database"
+title   = "3,900+ prompt injection corpus"
+intent  = ["redteam"]
+surface = "mac"
+proves  = "Deduplicated prompt-injection attacks with full-text search, OWASP LLM Top-10 and MITRE ATLAS mapping, quality scoring, and a browser UI."
+
+[run]
+launch = "make stats"
+
+[requires]
+files = ["Makefile"]
+
+[demo]
+beats = [
+  "the corpus behind most of the other red-team work",
+  "web UI: cd web && npm run dev",
+]
